@@ -1,0 +1,119 @@
+{% extends 'template.html' %}
+
+{% block content %}
+<script src="/static/d3/vis.js"></script>
+<style type="text/css">
+      #mynetwork {
+        width: 800px;
+        height: 600px;
+        border: 1px solid lightgray;
+      }
+    </style>
+</head>
+<body>
+<p class="text-center fs-3 fw-bold">GRAFO ETIQUETADO - VER CAMINO CORTO (DIJKSTRA Y FLOYD)</p>
+    <div class="mb-4">
+      <a href="/supermercado" class="btn btn-outline-light">Volver</a>
+    </div>
+      <div id="mynetwork"></div>
+      <div class="container bg-light p-4 rounded-lg shadow-lg">
+        <div class="row">
+            <div class="col-lg-12 mb-4">
+                <div class="card bg-light border-primary">
+                    <div class="card-header div-bg text-light"> 
+                        <h5 class="card-title mb-0 text-center">DJIKSTRA Y FLOYD</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="origen" class="form-label">ORIGEN</label>
+                                <select id="origen" class="form-select">
+                                    {% for item in lista %}
+                                    <option value="{{item.id}}">{{item.nombre}}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="destino" class="form-label">DESTINO</label>
+                                <select id="destino" class="form-select">
+                                    {% for item in lista %}
+                                    <option value="{{item.id}}">{{item.nombre}}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="algoritmo" class="form-label">ALGORITMO</label>
+                                <select id="algoritmo" class="form-select">
+                                    <option value="djistra">Dijkstra</option>
+                                    <option value="floyd">Floyd-Warshall</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <div class="col-lg-12">
+                <div class="card bg-light border-primary">
+                    <div class="card-body text-center">
+                        <a href="#" id="camino_mas_corto" class="btn btn-primary w-100">Ver Camino Corto</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+      
+        <div class="row mt-4">
+          <div class="col-md-12 mb-4">
+            <div class="card bg-light border-primary">
+              <div class="card-header div-bg text-light">
+                <h5 class="card-title mb-0">Resultado</h5>
+              </div>
+              <div class="card-body">
+                <div id="camino" class="text-dark"></div>
+                <div id="tiempo" class="text-secondary"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    <script type="text/javascript" src="/static/d3/grafo.js"></script>
+    <script>
+      $(document).ready(function () {
+        $("#camino_mas_corto").click(function (event) {
+          event.preventDefault();
+          caminoCorto();
+        });
+      });
+    
+      const caminoCorto = () => {
+        let origen = $("#origen").val();
+        let destino = $("#destino").val();
+        let algoritmo = $("#algoritmo").val(); 
+    
+        if (origen == destino) {
+          alert("El origen y el destino deben ser diferentes");
+          return;
+        }
+    
+        let url = `/supermercado/camino/${origen}/${destino}/${algoritmo}`; 
+        
+        $.ajax({
+          url: url,
+          method: "GET",
+          dataType: "json",
+          success: function(data) {
+            if (algoritmo === 'djistra') {
+              $("#camino").text(data.camino_djistkra);
+              $("#tiempo").text(`Tiempo: ${data.tiempo_djistra} ns`);
+            } else if (algoritmo === 'floyd') {
+              $("#camino").text(data.camino_floyd);
+              $("#tiempo").text(`Tiempo: ${data.tiempo_floyd} ns`);
+            }
+          },
+        });
+      }
+    </script>
+</body>
+</html>
+{% endblock %}

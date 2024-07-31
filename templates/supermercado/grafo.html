@@ -1,0 +1,208 @@
+{% extends 'template.html' %} {% block content %}
+
+<div class="mb-4">
+  <a href="/supermercado" class="btn btn-outline-light px-4 py-2 rounded"
+    >Volver</a
+  >
+</div>
+
+<h2 class="text-light p-4 text-center fs-3 fw-bold div-bg rounded-3 shadow-sm">
+  Administrar Supermercados
+</h2>
+
+<div class="bg-light p-4 rounded-lg shadow-lg">
+  <div class="row">
+    <div class="col-lg-12 mb-4">
+      <div class="card card-custom p-4 rounded-lg shadow-lg border">
+        <div class="card-header border-0 mb-4">
+          <h5 class="card-title fs-5 fw-semibold text-center text-dark">
+            Agregar Adyacencia
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-lg-6 mb-3 mb-lg-0">
+              <label for="origen" class="form-label">ORIGEN</label>
+              <select
+                id="origen"
+                class="form-select bg-white border-primary text-dark"
+              >
+                {% for item in lista %}
+                <option value="{{item.id}}">{{item.nombre}}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-lg-6">
+              <label for="destino" class="form-label">DESTINO</label>
+              <select
+                id="destino"
+                class="form-select bg-white border-primary text-dark"
+              >
+                {% for item in lista %}
+                <option value="{{item.id}}">{{item.nombre}}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="card-footer d-flex justify-content-center pt-0 border-0">
+          <a href="#" id="agregar_adyacencia" class="btn btn-primary mx-1"
+            >Agregar Adyacencia</a
+          >
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center mt-4 mb-3">
+    <h5 class="text-dark">Más opciones para grafo</h5>
+  </div>
+  <div class="d-flex justify-content-center mb-4">
+    <a href="#" id="cargar_json" class="btn btn-primary mx-2">Cargar Grafo</a>
+    <a href="#" id="guardar_json" class="btn btn-primary mx-2">Guardar Grafo</a>
+  </div>
+
+  <table id="tabla" class="table table-light table-striped mt-4">
+    <thead class="bg-primary text-light text-center">
+      <tr>
+        <th>-----</th>
+        {% for item in lista %}
+        <th>{{item.nombre}}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in lista %}
+      <tr>
+        <td class="text-center">{{item.nombre}}</td>
+        {% for _ in lista %}
+        <td class="text-center" contenteditable="true">Inf</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+  $(document).ready(function () {
+    // Asignar eventos a los botones
+    $("#agregar_adyacencia").click(function () {
+      let origen = $("#origen").val();
+      let destino = $("#destino").val();
+
+      // Verificar que el origen y el destino no sean iguales
+      if (origen == destino) {
+        alert("ERROR: El origen y el destino deben ser diferentes");
+        return;
+      }
+
+      // Construir la URL para la solicitud
+      let url = "/supermercado/guardar_distancia/" + origen + "/" + destino;
+
+      // Enviar la solicitud AJAX
+      $.ajax({
+        method: "POST",
+        url: url,
+        dataType: "json",
+        success: function (response) {
+          // Actualizar la tabla con la distancia
+          refrescarTabla(origen, destino, response.distancia);
+          refrescarTabla(destino, origen, response.distancia);
+        },
+        error: function (error) {
+          console.log("Error en la solicitud:", error);
+        },
+      });
+    });
+
+    $("#cargar_json").click(function () {
+      // Enviar solicitud AJAX para cargar el grafo
+      $.ajax({
+        method: "GET",
+        url: "/supermercado/cargar_json",
+        dataType: "json",
+        success: function (response) {
+          // Actualizar la tabla con los datos del grafo
+          refrescarTablaDatos(response);
+          alert("Grafo cargado exitosamente");
+        },
+        
+      });
+    });
+
+    $("#guardar_json").click(function () {
+      let rows = $("#tabla tbody tr");
+      let nodes = [];
+      let edges = [];
+
+      // Extraer nodos de la tabla
+      rows.each(function (rowIndex) {
+        let row = $(this);
+        let nodeName = row.find("td:first").text().trim();
+        let nodeId = rowIndex + 1;
+
+        nodes.push({ id: nodeId, name: nodeName });
+
+        row.find("td").each(function (colIndex) {
+          if (colIndex > 0) {
+            let distance = $(this).text().trim();
+            if (distance !== "Inf" && distance !== "") {
+              edges.push({
+                source: nodeId,
+                target: colIndex,
+                distance: parseFloat(distance),
+              });
+            }
+          }
+        });
+      });
+
+      let data = { nodes: nodes, edges: edges };
+
+      // Enviar solicitud AJAX para guardar el grafo
+      $.ajax({
+        method: "POST",
+        url: "/supermercado/guardar_json",
+        contentType: "application/json",
+        data: JSON.stringify(data),
+        dataType: "json",
+        success: function () {
+          alert("Grafo guardado exitosamente");
+        }
+        
+      });
+    });
+  });
+
+  const refrescarTabla = (origen, destino, distancia) => {
+    let filaOrigen = $("#tabla tbody tr").eq(origen - 1);
+    let celdaDestino = filaOrigen.find("td").eq(destino);
+    celdaDestino.text(distancia);
+  };
+
+  const refrescarTablaDatos = (data) => {
+    let tabla = $("#tabla");
+    tabla.find("tbody").empty();
+
+    data.nodes.forEach((node, rowIndex) => {
+      let fila = $("<tr>");
+      fila.append($("<td>").text(node.name).addClass("text-center"));
+
+      data.nodes.forEach((_, colIndex) => {
+        let celda = $("<td>").addClass("text-center").text("Inf");
+        fila.append(celda);
+      });
+
+      tabla.find("tbody").append(fila);
+    });
+
+    data.edges.forEach((edge) => {
+      let fila = tabla.find("tbody tr").eq(edge.source - 1);
+      let celda = fila.find("td").eq(edge.target);
+      celda.text(edge.distance);
+    });
+  };
+</script>
+
+{% endblock %}
